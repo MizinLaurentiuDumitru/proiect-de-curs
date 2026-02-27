@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Magazin React Premium - Cu Adăugare</title>
+    
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        body { font-family: 'Inter', 'Segoe UI', sans-serif; background-color: #f8fafc; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="text-slate-800">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useMemo } = React;
+
+        const PRODUSE_INITIALE = [
+            { id: 1, nume: "Căști Wireless Pro", pret: 150, categorie: "Electronice", imagine: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&q=80", descriere: "Sunet premium, noise cancelling activ." },
+            { id: 2, nume: "Tricou Bumbac Organic", pret: 25, categorie: "Îmbrăcăminte", imagine: "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=500&q=80", descriere: "100% bumbac, confortabil și respirabil." },
+            { id: 3, nume: "Ochelari de Soare", pret: 45, categorie: "Accesorii", imagine: "https://images.unsplash.com/photo-1511499767150-a48a237f0083?w=500&q=80", descriere: "Protecție UV400, ramă ușoară." }
+        ];
+
+        const CATEGORII = ["Toate", "Electronice", "Îmbrăcăminte", "Accesorii"];
+
+        const App = () => {
+            // --- STATE-URI (Memoria Aplicației) ---
+            const [produse, setProduse] = useState(PRODUSE_INITIALE); // Acum folosim setProduse pentru a adăuga
+            
+            // State-uri Coș
+            const [cos, setCos] = useState([]);
+            const [cosDeschis, setCosDeschis] = useState(false);
+            
+            // State-uri Filtrare
+            const [categorieFiltru, setCategorieFiltru] = useState("Toate");
+            const [pretMax, setPretMax] = useState(500);
+
+            // State-uri pentru Formularul de Adăugare Anunț
+            const [formularDeschis, setFormularDeschis] = useState(false);
+            const [anuntNou, setAnuntNou] = useState({
+                nume: "",
+                pret: "",
+                categorie: "Electronice", // valoarea default
+                imagine: "",
+                descriere: ""
+            });
+
+            // --- LOGICA PENTRU ADĂUGARE ANUNȚ NOU ---
+            const adaugaAnunt = (e) => {
+                e.preventDefault(); // Oprește reîncărcarea paginii
+                
+                // Creăm obiectul produsului nou
+                const produsComplet = {
+                    id: Date.now(), // Un ID unic generat din data curentă
+                    nume: anuntNou.nume,
+                    pret: Number(anuntNou.pret),
+                    categorie: anuntNou.categorie,
+                    imagine: anuntNou.imagine || "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&q=80", // Imagine default dacă e gol
+                    descriere: anuntNou.descriere
+                };
+
+                // Adăugăm produsul nou la începutul listei
+                setProduse([produsComplet, ...produse]);
+                
+                // Închidem formularul și îl golim
+                setFormularDeschis(false);
+                setAnuntNou({ nume: "", pret: "", categorie: "Electronice", imagine: "", descriere: "" });
+            };
+
+            // --- LOGICA PENTRU FILTRARE ---
+            const produseFiltrate = useMemo(() => {
+                return produse.filter(produs => 
+                    (categorieFiltru === "Toate" || produs.categorie === categorieFiltru) &&
+                    produs.pret <= pretMax
+                );
+            }, [produse, categorieFiltru, pretMax]);
+
+            // --- LOGICA COȘ (Simplificată vizual în cod) ---
+            const adaugaInCos = (produs) => {
+                setCos(c => {
+                    const exista = c.find(i => i.id === produs.id);
+                    if (exista) return c.map(i => i.id === produs.id ? { ...i, cantitate: i.cantitate + 1 } : i);
+                    return [...c, { ...produs, cantitate: 1 }];
+                });
+                setCosDeschis(true);
+            };
+            const stergeDinCos = (id) => setCos(c => c.filter(i => i.id !== id));
+            const totalCos = cos.reduce((t, i) => t + (i.pret * i.cantitate), 0);
+            const numarProduseCos = cos.reduce((t, i) => t + i.cantitate, 0);
+
+            return (
+                <div className="min-h-screen flex flex-col relative">
+                    
+                    {/* NAVBAR */}
+                    <nav className="bg-white shadow-sm border-b border-slate-200 sticky top-0 z-40">
+                        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+                            <h1 className="text-2xl font-black text-indigo-600 tracking-tight">VibeStore.</h1>
+                            
+                            <div className="flex items-center gap-6">
+                                {/* Buton Adaugă Anunț */}
+                                <button 
+                                    onClick={() => setFormularDeschis(true)}
+                                    className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg shadow-sm transition-colors flex items-center gap-2 text-sm"
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path></svg>
+                                    Adaugă Anunț
+                                </button>
+
+                                {/* Buton Coș */}
+                                <button onClick={() => setCosDeschis(true)} className="relative p-2 text-slate-600 hover:text-indigo-600 transition">
+                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                                    {numarProduseCos > 0 && (
+                                        <span className="absolute top-0 right-0 -mt-1 -mr-1 bg-red-500 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
+                                            {numarProduseCos}
+                                        </span>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    </nav>
+
+                    {/* MAIN CONTENT */}
+                    <main className="flex-grow container mx-auto px-4 py-8 flex flex-col md:flex-row gap-8">
+                        
+                        {/* BARĂ LATERALĂ (Filtre) */}
+                        <aside className="w-full md:w-64 flex-shrink-0">
+                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                                <h2 className="font-bold text-lg mb-4 text-slate-800 border-b pb-2">Filtrează</h2>
+                                <div className="mb-6">
+                                    <h3 className="font-semibold text-sm text-slate-500 mb-3 uppercase tracking-wider">Categorii</h3>
+                                    <div className="flex flex-col gap-2">
+                                        {CATEGORII.map(cat => (
+                                            <button 
+                                                key={cat} onClick={() => setCategorieFiltru(cat)}
+                                                className={`text-left px-3 py-2 rounded-lg transition ${categorieFiltru === cat ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-slate-600 hover:bg-slate-50'}`}
+                                            >
+                                                {cat}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div>
+                                    <h3 className="font-semibold text-sm text-slate-500 mb-3 uppercase tracking-wider">Preț Max: {pretMax} Lei</h3>
+                                    <input type="range" min="0" max="1000" step="50" value={pretMax} onChange={(e) => setPretMax(Number(e.target.value))} className="w-full accent-indigo-600" />
+                                </div>
+                            </div>
+                        </aside>
+
+                        {/* GRILĂ PRODUSE */}
+                        <section className="flex-grow">
+                            {produseFiltrate.length === 0 ? (
+                                <div className="text-center py-20 text-slate-500">Niciun produs găsit.</div>
+                            ) : (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    {produseFiltrate.map(produs => (
+                                        <div key={produs.id} className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-lg transition-shadow duration-300 flex flex-col relative">
+                                            <div className="absolute top-3 left-3 bg-white/90 backdrop-blur text-xs font-bold px-2 py-1 rounded-md text-slate-700 z-10 shadow-sm">
+                                                {produs.categorie}
+                                            </div>
+                                            <img src={produs.imagine} alt={produs.nume} className="w-full h-48 object-cover hover:scale-105 transition-transform duration-500" />
+                                            <div className="p-5 flex flex-col flex-grow bg-white z-20">
+                                                <h3 className="font-bold text-lg text-slate-800 mb-1">{produs.nume}</h3>
+                                                <p className="text-slate-500 text-sm mb-4 line-clamp-2 flex-grow">{produs.descriere}</p>
+                                                <div className="flex justify-between items-center mt-auto">
+                                                    <span className="text-xl font-black text-indigo-600">{produs.pret} Lei</span>
+                                                    <button onClick={() => adaugaInCos(produs)} className="bg-slate-900 hover:bg-indigo-600 text-white px-4 py-2 rounded-xl font-medium transition-colors">Adaugă</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </section>
+                    </main>
+
+                    {/* FEREASTRA (MODAL) PENTRU ADĂUGARE ANUNȚ NOU */}
+                    {formularDeschis && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                            {/* Fundal blurat pentru fereastră */}
+                            <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setFormularDeschis(false)}></div>
+                            
+                            {/* Cutia formularului */}
+                            <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 md:p-8 animate-slide-in">
+                                <div className="flex justify-between items-center mb-6">
+                                    <h2 className="text-2xl font-bold text-slate-800">Creează Anunț Nou</h2>
+                                    <button onClick={() => setFormularDeschis(false)} className="text-slate-400 hover:text-red-500 transition">
+                                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                    </button>
+                                </div>
+
+                                <form onSubmit={adaugaAnunt} className="flex flex-col gap-5">
+                                    <div>
+                                        <label className="block text-sm font-semibold text-slate-600 mb-1">Titlu Anunț</label>
+                                        <input type="text" required placeholder="ex: Căști Bluetooth Noi" value={anuntNou.nume} onChange={e => setAnuntNou({...anuntNou, nume: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition" />
+                                    </div>
+                                    
+                                    <div className="flex gap-4">
+                                        <div className="w-1/2">
+                                            <label className="block text-sm font-semibold text-slate-600 mb-1">Preț (Lei)</label>
+                                            <input type="number" required min="1" placeholder="ex: 150" value={anuntNou.pret} onChange={e => setAnuntNou({...anuntNou, pret: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-indigo-500 transition" />
+                                        </div>
+                                        <div className="w-1/2">
+                                            <label className="block text-sm font-semibold text-slate-600 mb-1">Secțiune/Categorie</label>
+                                            <select required value={anuntNou.categorie} onChange={e => setAnuntNou({...anuntNou, categorie: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-indigo-500 transition">
+                                                <option value="Electronice">Electronice</option>
+                                                <option value="Îmbrăcăminte">Îmbrăcăminte</option>
+                                                <option value="Accesorii">Accesorii</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-semibold text-slate-600 mb-1">Link Imagine (URL)</label>
+                                        <input type="url" placeholder="https://..." value={anuntNou.imagine} onChange={e => setAnuntNou({...anuntNou, imagine: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-indigo-500 transition text-sm" />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-semibold text-slate-600 mb-1">Descriere</label>
+                                        <textarea required placeholder="Oferă câteva detalii despre produs..." rows="3" value={anuntNou.descriere} onChange={e => setAnuntNou({...anuntNou, descriere: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-indigo-500 transition resize-none"></textarea>
+                                    </div>
+
+                                    <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition-colors shadow-lg shadow-indigo-200 mt-2">
+                                        Publică Anunțul
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* COȘ LATERAL (Sertar) */}
+                    {cosDeschis && (
+                        <div className="fixed inset-0 z-50 flex justify-end">
+                            <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={() => setCosDeschis(false)}></div>
+                            <div className="relative w-full max-w-md bg-white h-full shadow-2xl flex flex-col">
+                                <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                                    <h2 className="text-xl font-bold text-slate-800">Coșul tău ({numarProduseCos})</h2>
+                                    <button onClick={() => setCosDeschis(false)} className="text-slate-400 hover:text-slate-800 transition">Închide X</button>
+                                </div>
+                                <div className="flex-grow overflow-y-auto p-6 flex flex-col gap-4">
+                                    {cos.map(item => (
+                                        <div key={item.id} className="flex gap-4 items-center border-b pb-4">
+                                            <img src={item.imagine} className="w-16 h-16 object-cover rounded" />
+                                            <div className="flex-grow">
+                                                <h4 className="font-bold text-sm">{item.nume}</h4>
+                                                <p className="text-indigo-600 font-bold">{item.pret} Lei x {item.cantitate}</p>
+                                            </div>
+                                            <button onClick={() => stergeDinCos(item.id)} className="text-red-500 text-xs font-bold hover:underline">Șterge</button>
+                                        </div>
+                                    ))}
+                                </div>
+                                {cos.length > 0 && (
+                                    <div className="p-6 bg-slate-50 border-t">
+                                        <div className="flex justify-between font-bold text-xl mb-4"><span>Total:</span><span>{totalCos} Lei</span></div>
+                                        <button className="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl">Finalizează Comanda</button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                    
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
